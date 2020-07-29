@@ -1,0 +1,68 @@
+name: Hex file flasher for chips
+version: "1.0"
+author: Roberts Ivanovs <roberts@hwswservices.com>
+about: Will speed up the flashing process. At least will try to
+args:
+    - port-to-flash:
+        long: input-port
+        value_name: Port
+        help: The port to flash on your system e.g /dev/ttyUSB0
+        required: true
+        index: 1
+    - port-to-stimulate:
+        short: s
+        long: simulate-port
+        value_name: Port
+        help: When flashing relays, it's useful to simulate-feed data into them for master comms. e.g /dev/ttyUSB0
+        required: false
+        conflicts_with: [master]
+    - only-test:
+        short: t
+        long: Perform only tests, don't flash
+        help: Perform rigorous tests on the flashed chip without flashing
+        required: false
+        takes_value: false
+    - green:
+        long: green
+        takes_value: false
+    - blue-shiny:
+        long: blue-shiny
+        takes_value: false
+    - blue-non-shiny:
+        long: blue-non-shiny
+        takes_value: false
+    - rel-mk1:
+        long: relay-mk1
+        takes_value: false
+    - rel-mk1.5:
+        long: relay-mk1.5
+        takes_value: false
+    - master:
+        long: master
+        takes_value: false
+    - id-to-ping:
+        short: p
+        long: id-ping
+        value_name: ID to ping
+        min_values: 0
+        max_values: 255
+        takes_value: true
+        conflicts_with: [rel-mk1, rel-mk1.5]
+    - id-to-flash:
+        short: f
+        long: id-flash
+        help: ID to flash onto the chip via eeprom
+        value_name: ID to flash
+        min_values: 0
+        max_values: 255
+        conflicts_with: [master]
+        takes_value: true
+groups:
+    - chip-type:
+        args: [green, blue-shiny, blue-non-shiny]
+        multiple: false
+        required: true
+    - soft-type:
+        args: ["rel-mk1", "rel-mk1.5", "master"]
+        multiple: false
+        required: true
