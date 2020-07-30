@@ -13,7 +13,7 @@ args:
         short: s
         long: simulate-port
         value_name: Port
-        help: When flashing relays, it's useful to simulate-feed data into them for master comms. e.g /dev/ttyUSB0
+        help: Simulate data-feed into them for master comms. e.g /dev/ttyUSB0
         required: false
         conflicts_with: [master]
     - only-test:
