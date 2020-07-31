@@ -1,8 +1,4 @@
-use serial::{
-    core::SerialDevice,
-    unix::{TTYPort, TTYSettings},
-    SerialPortSettings,
-};
+use serial::{core::SerialDevice, unix::TTYPort, SerialPortSettings};
 use std::{
     io::{Read, Write},
     path::Path,
@@ -21,7 +17,7 @@ impl Chip {
         let mut serial = TTYPort::open(Path::new(port_path)).unwrap();
         let mut settings = serial.read_settings().unwrap();
         settings.set_baud_rate(serial::Baud57600).unwrap();
-        serial.write_settings(&settings);
+        serial.write_settings(&settings).unwrap();
         // Perform string id conversion to int id
         let final_id: Option<i32> = match id {
             Some(val) => Some(val.parse::<i32>().unwrap()),
@@ -40,28 +36,35 @@ impl Chip {
         // Perform 'clean buffer'
         self.serial.flush().unwrap();
         self.read("i'm a master");
-        // send ping command
-        self.ping(id_to_ping);
-        // skip to the part where the device responds back
-        self.read("<<0");
-        // Check if something responded
-        if !self.read("rssi is") {
-            println!("Nothing responded!");
-            self.rssi = None;
+
+        for _ in 0..times {
+            // send ping command
+            self.ping(id_to_ping);
+            // skip to the part where the device responds back
+            self.read("<<0");
+            // Check if something responded
+            let response_line = self.read("rssi is");
+            match response_line {
+                Some(line) => {
+                    println!("RSSI line `{}`", line);
+                }
+                None => {
+                    println!("Nothing responded! {}", self.leftover_buffer);
+                }
+            }
         }
     }
 
     fn ping(&mut self, id_to_ping: i32) {
         let ping_command = format!(">>p:{:x}:4\n", id_to_ping);
-        println!("{}", ping_command);
         let t = time::Duration::from_secs(1);
         thread::sleep(t);
         self.serial.write(ping_command.as_bytes()).unwrap();
     }
 
-    fn read(&mut self, expected: &str) -> bool {
+    fn read(&mut self, expected: &str) -> Option<String> {
         let mut empty = 0;
-        for i in 0..15 {
+        for _ in 0..30 {
             let mut line = self.readline();
             if line == "" || line == "\r" {
                 line = "".to_string();
@@ -71,16 +74,16 @@ impl Chip {
             }
             if line == "" {
                 empty += 1;
-                let two_empty = empty == 2;
+                let two_empty = empty == 5;
                 if two_empty {
-                    return false;
+                    return None;
                 }
             }
             if line.contains(expected) {
-                return true;
+                return Some(line);
             }
         }
-        return false;
+        return None;
     }
 
     fn readline(&mut self) -> String {
@@ -92,7 +95,6 @@ impl Chip {
                 // Perform buffer reading
                 let mut res = [0; 10000];
                 let elems = self.serial.read(&mut res);
-
                 match elems {
                     Ok(val) => {
                         if val == 0 {
@@ -105,7 +107,7 @@ impl Chip {
                     }
                     Err(_) => {
                         // sleep for a bit
-                        let t = time::Duration::from_millis(100);
+                        let t = time::Duration::from_millis(300);
                         thread::sleep(t);
                     }
                 }
@@ -119,7 +121,7 @@ impl Chip {
         let start = 0;
         let mut end = 0;
         for (ind, val) in self.leftover_buffer.chars().enumerate() {
-            if val == '\r' {
+            if val == '\n' {
                 end = end + 1;
                 let returnable = self.leftover_buffer[start..end].to_string();
                 self.leftover_buffer =
