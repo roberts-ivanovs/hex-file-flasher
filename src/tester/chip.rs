@@ -1,3 +1,4 @@
+use regex::Regex;
 use serial::{core::SerialDevice, unix::TTYPort, SerialPortSettings};
 use std::{
     io::{Read, Write},
@@ -8,7 +9,8 @@ use std::{thread, time};
 pub struct Chip {
     pub serial: TTYPort,
     pub id: Option<i32>,
-    pub rssi: Option<i32>,
+    total_rssi: i32,
+    total_successful_rssi_pings: i32,
     leftover_buffer: String,
 }
 
@@ -27,7 +29,8 @@ impl Chip {
         Self {
             serial,
             id: final_id,
-            rssi: None,
+            total_rssi: 0,
+            total_successful_rssi_pings: 0,
             leftover_buffer: String::new(),
         }
     }
@@ -37,6 +40,7 @@ impl Chip {
         self.serial.flush().unwrap();
         self.read("i'm a master");
 
+        let re = Regex::new(r"[+-?]\d+").unwrap();
         for _ in 0..times {
             // send ping command
             self.ping(id_to_ping);
@@ -46,13 +50,19 @@ impl Chip {
             let response_line = self.read("rssi is");
             match response_line {
                 Some(line) => {
-                    println!("RSSI line `{}`", line);
+                    for cap in re.captures_iter(&line) {
+                        println!("RSSI line: {:?}", &cap[0]);
+                        self.total_rssi += &cap[0].parse().unwrap();
+                        self.total_successful_rssi_pings += 1;
+                    }
                 }
                 None => {
                     println!("Nothing responded! {}", self.leftover_buffer);
                 }
             }
         }
+        let rssi = self.total_rssi/self.total_successful_rssi_pings;
+        println!("Avg RSSI: {}", rssi);
     }
 
     fn ping(&mut self, id_to_ping: i32) {
