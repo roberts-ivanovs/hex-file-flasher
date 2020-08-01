@@ -6,16 +6,34 @@ use std::{
 };
 use std::{thread, time};
 
+
+#[derive(Debug, PartialEq)]
+pub enum SoftTypes {
+    Master,
+    Relay1,
+    Relay1_5,
+}
+
+#[derive(Debug)]
+pub enum ChipTypes {
+    Green,
+    BlueShiny,
+    BlueNonShiny,
+}
+
+
 pub struct Chip {
     pub serial: TTYPort,
     pub id: Option<i32>,
     total_rssi: i32,
     total_successful_rssi_pings: i32,
     leftover_buffer: String,
+    chip_type: ChipTypes,
+    soft_type: SoftTypes,
 }
 
 impl Chip {
-    pub fn new(port_path: &str, id: Option<&str>) -> Self {
+    pub fn new(port_path: &str, id: Option<&str>, chip_type: ChipTypes, soft_type: SoftTypes) -> Self {
         let mut serial = TTYPort::open(Path::new(port_path)).unwrap();
         let mut settings = serial.read_settings().unwrap();
         settings.set_baud_rate(serial::Baud57600).unwrap();
@@ -32,6 +50,8 @@ impl Chip {
             total_rssi: 0,
             total_successful_rssi_pings: 0,
             leftover_buffer: String::new(),
+            chip_type,
+            soft_type,
         };
         chip.await_startup();
         chip

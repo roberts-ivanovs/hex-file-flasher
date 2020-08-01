@@ -9,36 +9,17 @@ args:
         help: The port to flash on your system e.g /dev/ttyUSB0
         required: true
         index: 1
-    - port-to-stimulate:
+    - port-to-simulate:
         short: s
         long: simulate-port
         value_name: Port
         help: Simulate data-feed into them for master comms. e.g /dev/ttyUSB0
         required: false
-        conflicts_with: [master]
     - only-test:
         short: t
         long: Perform only tests, don't flash
         help: Perform rigorous tests on the flashed chip without flashing
         required: false
-        takes_value: false
-    - green:
-        long: green
-        takes_value: false
-    - blue-shiny:
-        long: blue-shiny
-        takes_value: false
-    - blue-non-shiny:
-        long: blue-non-shiny
-        takes_value: false
-    - rel-mk1:
-        long: relay-mk1
-        takes_value: false
-    - rel-mk1.5:
-        long: relay-mk1.5
-        takes_value: false
-    - master:
-        long: master
         takes_value: false
     - id-to-ping:
         short: p
@@ -47,7 +28,10 @@ args:
         min_values: 0
         max_values: 255
         takes_value: true
-        conflicts_with: [rel-mk1, rel-mk1.5]
+    - chip-factory-number:
+        long: factory-number
+        value_name: a set of numbers on the chip
+        takes_value: true
     - id-to-flash:
         short: f
         long: id-flash
@@ -55,14 +39,14 @@ args:
         value_name: ID to flash
         min_values: 0
         max_values: 255
-        conflicts_with: [master]
         takes_value: true
-groups:
     - chip-type:
-        args: [green, blue-shiny, blue-non-shiny]
-        multiple: false
+        help: The physical properties of the chip
+        possible_values: [green, blue-shiny, blue-non-shiny]
         required: true
+        takes_value: false
     - soft-type:
-        args: ["rel-mk1", "rel-mk1.5", "master"]
-        multiple: false
+        help: The software that will be flashed onto the chip
+        possible_values: ["rel-mk1", "rel-mk1.5", "master"]
         required: true
+        takes_value: false
