@@ -26,19 +26,27 @@ impl Chip {
             None => None,
         };
 
-        Self {
+        let mut chip = Self {
             serial,
             id: final_id,
             total_rssi: 0,
             total_successful_rssi_pings: 0,
             leftover_buffer: String::new(),
-        }
+        };
+        chip.await_startup();
+        chip
+
+    }
+
+    fn await_startup(&mut self) {
+        // Perform 'clean buffer'
+        self.serial.flush().unwrap();
+        self.read("i'm a master");
     }
 
     pub fn check_rssi(&mut self, times: i32, id_to_ping: i32) {
         // Perform 'clean buffer'
         self.serial.flush().unwrap();
-        self.read("i'm a master");
 
         let re = Regex::new(r"[+-?]\d+").unwrap();
         for _ in 0..times {
