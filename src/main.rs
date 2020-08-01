@@ -19,20 +19,31 @@ fn main() {
     let chip_type = get_chip_type(&matches).unwrap();
     let soft_type = get_soft_type(&matches).unwrap();
     let id_to_flash = matches.value_of("id-to-flash");
+    let factory_number = matches.value_of("chip-factory-number");
 
     // ------------------Validation-------------------- //
     if matches.is_present("port-to-simulate") && soft_type == SoftTypes::Master {
-        panic!("No reason to simulate port when flashing Master software!");
+        print_error_and_exit("No reason to simulate port when flashing Master software!");
+        process::exit(1);
     }
 
     if matches.is_present("id-to-ping")
         && (soft_type == SoftTypes::Relay1 || soft_type == SoftTypes::Relay1_5)
     {
-        panic!("When flashing relays there's no need to ping a different chip other than the ID that's getting flashed!");
+        print_error_and_exit("When flashing relays there's no need to ping a different chip other than the ID that's getting flashed!");
+        process::exit(1);
     }
 
     if matches.is_present("id-to-flash") && soft_type == SoftTypes::Master {
-        panic!("There's no reason for a master soft to contain an ID");
+        print_error_and_exit("There's no reason for a master soft to contain an ID");
+        process::exit(1);
+    }
+
+    if chip_type == ChipTypes::Green && !matches.is_present("chip-factory-number") {
+        print_error_and_exit(
+            "When flashing green chips be sure to pass the chips factory number.
+        It usually can be found on the bottom of the chip with a QR code attached",
+        );
     }
 
     // ------------------Perform flashing-------------------- //
@@ -46,6 +57,11 @@ fn main() {
     // ------------------Perform testing-------------------- //
     let mut device_to_test = tester::chip::Chip::new(port_to_flash, id_to_flash, chip_type, soft_type);
     device_to_test.check_rssi(4, 1);
+}
+
+fn print_error_and_exit(error: &str) {
+    eprintln!("{}", error);
+    process::exit(1);
 }
 
 fn get_chip_type(matches: &ArgMatches) -> Result<ChipTypes, String> {
