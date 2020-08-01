@@ -58,19 +58,19 @@ fn main() {
         tester::chip::Chip::new(port_to_flash, id_to_flash, chip_type, soft_type);
     let test_results = device_to_test.perform_test(id_to_ping);
 
-    // Save to DB
+    // ------------------Save to database-------------------- //
     let db_instance = db::DbInstance::new();
-    let chip_id = db_instance.register_chip(
-        &chip_type.to_string(),
+    let chip_id = db_instance.register_chip(&chip_type.to_string(), factory_number);
+    let flash_id = db_instance.register_flash(
+        chip_id,
         &soft_type.to_string(),
-        factory_number,
         time::SystemTime::now(),
+        id_to_flash,
     );
     for (key, val) in test_results.iter() {
-        db_instance.register_test(chip_id, key, val);
+        db_instance.register_test(flash_id, key, val);
     }
-
-
+    // ------------------Save to excel file-------------------- //
 }
 
 fn print_error_and_exit(error: &str) {
