@@ -1,26 +1,35 @@
 use regex::Regex;
 use serial::{core::SerialDevice, unix::TTYPort, SerialPortSettings};
+use std::{fmt, thread, time};
 use std::{
     io::{Read, Write},
     path::Path,
 };
-use std::{thread, time};
 
-
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum SoftTypes {
     Master,
     Relay1,
     Relay1_5,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum ChipTypes {
     Green,
     BlueShiny,
     BlueNonShiny,
 }
 
+impl fmt::Display for ChipTypes {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+impl fmt::Display for SoftTypes {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
 
 pub struct Chip {
     pub serial: TTYPort,
@@ -33,7 +42,12 @@ pub struct Chip {
 }
 
 impl Chip {
-    pub fn new(port_path: &str, id: Option<&str>, chip_type: ChipTypes, soft_type: SoftTypes) -> Self {
+    pub fn new(
+        port_path: &str,
+        id: Option<&str>,
+        chip_type: ChipTypes,
+        soft_type: SoftTypes,
+    ) -> Self {
         let mut serial = TTYPort::open(Path::new(port_path)).unwrap();
         let mut settings = serial.read_settings().unwrap();
         settings.set_baud_rate(serial::Baud57600).unwrap();
@@ -55,7 +69,6 @@ impl Chip {
         };
         chip.await_startup();
         chip
-
     }
 
     fn await_startup(&mut self) {
@@ -89,7 +102,7 @@ impl Chip {
                 }
             }
         }
-        let rssi = self.total_rssi/self.total_successful_rssi_pings;
+        let rssi = self.total_rssi / self.total_successful_rssi_pings;
         println!("Avg RSSI: {}", rssi);
     }
 

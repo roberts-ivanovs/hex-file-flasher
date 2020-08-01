@@ -6,13 +6,13 @@ extern crate clap;
 
 use clap::{App, ArgMatches};
 
+use std::process;
+use std::time;
 use tester::chip::{ChipTypes, SoftTypes};
 
 fn main() {
     let yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(yaml).get_matches();
-
-    println!("{:?}", matches);
 
     // ------------------Arg extracting-------------------- //
     let port_to_flash = matches.value_of("port-to-flash").unwrap();
@@ -55,8 +55,18 @@ fn main() {
     }
 
     // ------------------Perform testing-------------------- //
-    let mut device_to_test = tester::chip::Chip::new(port_to_flash, id_to_flash, chip_type, soft_type);
+    let mut device_to_test =
+        tester::chip::Chip::new(port_to_flash, id_to_flash, chip_type, soft_type);
     device_to_test.check_rssi(4, 1);
+
+    // Save to DB
+    let db_instance = db::DbInstance::new();
+    db_instance.register_chip(
+        &chip_type.to_string(),
+        &soft_type.to_string(),
+        factory_number,
+        time::SystemTime::now(),
+    );
 }
 
 fn print_error_and_exit(error: &str) {
