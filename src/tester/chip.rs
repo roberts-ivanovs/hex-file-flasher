@@ -1,5 +1,6 @@
 use regex::Regex;
 use serial::{core::SerialDevice, unix::TTYPort, SerialPortSettings};
+use std::collections::HashMap;
 use std::{fmt, thread, time};
 use std::{
     io::{Read, Write},
@@ -34,8 +35,6 @@ impl fmt::Display for SoftTypes {
 pub struct Chip {
     pub serial: TTYPort,
     pub id: Option<i32>,
-    total_rssi: i32,
-    total_successful_rssi_pings: i32,
     leftover_buffer: String,
     chip_type: ChipTypes,
     soft_type: SoftTypes,
@@ -61,8 +60,6 @@ impl Chip {
         let mut chip = Self {
             serial,
             id: final_id,
-            total_rssi: 0,
-            total_successful_rssi_pings: 0,
             leftover_buffer: String::new(),
             chip_type,
             soft_type,
@@ -71,16 +68,40 @@ impl Chip {
         chip
     }
 
+    pub fn perform_test(&mut self, id_to_ping: Option<&str>) -> HashMap<String, String> {
+        let mut hm = HashMap::new();
+        match self.soft_type {
+            SoftTypes::Master => {
+                // Check RSSI
+                let id_to_ping = id_to_ping.unwrap().parse::<i32>().unwrap();
+                let rssi = self.check_rssi(4, id_to_ping);
+                hm.insert("rssi".to_string(), rssi.to_string());
+            }
+            SoftTypes::Relay1 | SoftTypes::Relay1_5 => {
+                // TODO Perform simulations here with the attached master
+            }
+        }
+        hm
+    }
+
+    // ----------- Implementation details below ---------------- //
     fn await_startup(&mut self) {
         // Perform 'clean buffer'
         self.serial.flush().unwrap();
-        self.read("i'm a master");
+        match self.soft_type {
+            SoftTypes::Master => {
+                self.read("i'm a master");
+            }
+            SoftTypes::Relay1 | SoftTypes::Relay1_5 => {}
+        }
     }
 
-    pub fn check_rssi(&mut self, times: i32, id_to_ping: i32) {
+    fn check_rssi(&mut self, times: i32, id_to_ping: i32) -> i32 {
         // Perform 'clean buffer'
         self.serial.flush().unwrap();
 
+        let mut total_rssi = 0;
+        let mut total_successful_rssi_pings = 0;
         let re = Regex::new(r"[+-?]\d+").unwrap();
         for _ in 0..times {
             // send ping command
@@ -92,9 +113,9 @@ impl Chip {
             match response_line {
                 Some(line) => {
                     for cap in re.captures_iter(&line) {
-                        println!("RSSI line: {:?}", &cap[0]);
-                        self.total_rssi += &cap[0].parse().unwrap();
-                        self.total_successful_rssi_pings += 1;
+                        println!("Ping RSSI: {:?}", &cap[0]);
+                        total_rssi += &cap[0].parse().unwrap();
+                        total_successful_rssi_pings += 1;
                     }
                 }
                 None => {
@@ -102,8 +123,8 @@ impl Chip {
                 }
             }
         }
-        let rssi = self.total_rssi / self.total_successful_rssi_pings;
-        println!("Avg RSSI: {}", rssi);
+        let rssi = total_rssi / total_successful_rssi_pings;
+        rssi
     }
 
     fn ping(&mut self, id_to_ping: i32) {

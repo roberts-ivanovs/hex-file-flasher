@@ -20,6 +20,7 @@ fn main() {
     let soft_type = get_soft_type(&matches).unwrap();
     let id_to_flash = matches.value_of("id-to-flash");
     let factory_number = matches.value_of("chip-factory-number");
+    let id_to_ping = matches.value_of("id-to-ping");
 
     // ------------------Validation-------------------- //
     if matches.is_present("port-to-simulate") && soft_type == SoftTypes::Master {
@@ -27,10 +28,8 @@ fn main() {
         process::exit(1);
     }
 
-    if matches.is_present("id-to-ping")
-        && (soft_type == SoftTypes::Relay1 || soft_type == SoftTypes::Relay1_5)
-    {
-        print_error_and_exit("When flashing relays there's no need to ping a different chip other than the ID that's getting flashed!");
+    if !matches.is_present("id-to-ping") && soft_type == SoftTypes::Master {
+        print_error_and_exit("Master needs an ID to ping!");
         process::exit(1);
     }
 
@@ -57,16 +56,21 @@ fn main() {
     // ------------------Perform testing-------------------- //
     let mut device_to_test =
         tester::chip::Chip::new(port_to_flash, id_to_flash, chip_type, soft_type);
-    device_to_test.check_rssi(4, 1);
+    let test_results = device_to_test.perform_test(id_to_ping);
 
     // Save to DB
     let db_instance = db::DbInstance::new();
-    db_instance.register_chip(
+    let chip_id = db_instance.register_chip(
         &chip_type.to_string(),
         &soft_type.to_string(),
         factory_number,
         time::SystemTime::now(),
     );
+    for (key, val) in test_results.iter() {
+        db_instance.register_test(chip_id, key, val);
+    }
+
+
 }
 
 fn print_error_and_exit(error: &str) {

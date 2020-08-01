@@ -51,7 +51,7 @@ impl DbInstance {
         let conn = Connection::open("db.sqlite3").unwrap();
         let id = conn.execute(
             "INSERT INTO test (chip_fk, key, value)
-            VALUES (?1, ?2, ?2)
+            VALUES (?1, ?2, ?3)
         ", params![chip_db_id as f64, key, value]).unwrap();
         id
     }
