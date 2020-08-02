@@ -1,4 +1,4 @@
-use rusqlite::{params, Connection, Result};
+use rusqlite::{named_params, params, Connection, Result};
 use std::time;
 
 pub struct DbInstance {
@@ -50,52 +50,77 @@ impl DbInstance {
             .unwrap();
     }
 
-    pub fn register_chip(&self, chip_type: &str, chip_number: Option<&str>) -> usize {
-        // TODO search if chip number exists in the DB already, if so, don't create new entry
-        let id = self
+    pub fn register_chip(&self, chip_type: &str, chip_number: Option<&str>) -> i64 {
+        let mut stmt = self
             .conn
-            .execute(
-                "INSERT INTO chip (chip_type, chip_number)
-            VALUES (?1, ?2)
-        ",
-                params![chip_type, chip_number],
-            )
+            .prepare("SELECT id FROM chip WHERE chip_number = :chip_number")
             .unwrap();
-        id
+        let mut rows = stmt
+            .query_named(named_params! { ":chip_number": chip_number })
+            .unwrap();
+
+        let mut max_id: i64 = -1;
+        let mut max_count = 0;
+        while let Some(row) = rows.next().unwrap() {
+            let id: i64 = row.get(0).unwrap();
+            println!("{}", id);
+            max_id = id;
+            max_count += 1;
+        }
+
+        match max_count {
+            1 => max_id,
+            _ => {
+                // Perform new object insertion
+                let mut stmt = self
+                    .conn
+                    .prepare(
+                        "INSERT INTO chip (chip_type, chip_number)
+                    VALUES (?1, ?2)
+                ",
+                    )
+                    .unwrap();
+                let id = stmt.insert(params![chip_type, chip_number]).unwrap();
+                id
+            }
+        }
     }
 
     pub fn register_flash(
         &self,
-        chip_db_id: usize,
+        chip_db_id: i64,
         software: &str,
         flashed_time: time::SystemTime,
         flashed_id: Option<&str>,
-    ) -> usize {
+    ) -> i64 {
         let timestamp = flashed_time
             .duration_since(time::UNIX_EPOCH)
             .unwrap()
             .as_secs_f64();
-        let id = self
+        let mut stmt = self
             .conn
-            .execute(
+            .prepare(
                 "INSERT INTO flash (chip_fk, software, flashed_id, flashed_time)
-            VALUES (?1, ?2, ?3, ?4)
-        ",
-                params![chip_db_id as f64, software, flashed_id, timestamp],
+            VALUES (?1, ?2, ?3, ?4)",
             )
+            .unwrap();
+        let id = stmt
+            .insert(params![chip_db_id as i64, software, flashed_id, timestamp])
             .unwrap();
         id
     }
 
-    pub fn register_test(&self, flash_db_id: usize, key: &str, value: &str) -> usize {
+    pub fn register_test(&self, flash_db_id: i64, key: &str, value: &str) -> i64 {
         let conn = Connection::open("db.sqlite3").unwrap();
-        let id = conn
-            .execute(
+        let mut stmt = conn
+            .prepare(
                 "INSERT INTO test (flash_fk, key, value)
             VALUES (?1, ?2, ?3)
         ",
-                params![flash_db_id as f64, key, value],
             )
+            .unwrap();
+        let id = stmt
+            .insert(params![flash_db_id as f64, key, value])
             .unwrap();
         id
     }

@@ -46,17 +46,19 @@ fn main() {
     }
 
     // ------------------Perform flashing-------------------- //
+    let mut flashed = false;
     if matches.is_present("port-to-flash") && !matches.is_present("only-test") {
         println!(
             "Flashing {} as {:?} chip with {:?} code with ID {:?} ",
             port_to_flash, chip_type, soft_type, id_to_flash
         );
+        flashed = true;
     }
 
     // ------------------Perform testing-------------------- //
     let mut device_to_test =
         tester::chip::Chip::new(port_to_flash, id_to_flash, chip_type, soft_type);
-    let test_results = device_to_test.perform_test(id_to_ping);
+    let test_results = device_to_test.perform_test(id_to_ping, flashed);
 
     // ------------------Save to database-------------------- //
     let db_instance = db::DbInstance::new();

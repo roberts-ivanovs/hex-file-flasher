@@ -68,17 +68,20 @@ impl Chip {
         chip
     }
 
-    pub fn perform_test(&mut self, id_to_ping: Option<&str>) -> HashMap<String, String> {
+    pub fn perform_test(&mut self, id_to_ping: Option<&str>, flashed: bool) -> HashMap<String, String> {
         let mut hm = HashMap::new();
-        match self.soft_type {
-            SoftTypes::Master => {
-                // Check RSSI
-                let id_to_ping = id_to_ping.unwrap().parse::<i32>().unwrap();
-                let rssi = self.check_rssi(4, id_to_ping);
-                hm.insert("rssi".to_string(), rssi.to_string());
-            }
-            SoftTypes::Relay1 | SoftTypes::Relay1_5 => {
-                // TODO Perform simulations here with the attached master
+        hm.insert("flashed".to_string(), flashed.to_string());
+        if flashed {
+            match self.soft_type {
+                SoftTypes::Master => {
+                    // Check RSSI
+                    let id_to_ping = id_to_ping.unwrap().parse::<i32>().unwrap();
+                    let rssi = self.check_rssi(4, id_to_ping);
+                    hm.insert("rssi".to_string(), rssi.to_string());
+                }
+                SoftTypes::Relay1 | SoftTypes::Relay1_5 => {
+                    // TODO Perform simulations here with the attached master
+                }
             }
         }
         hm
