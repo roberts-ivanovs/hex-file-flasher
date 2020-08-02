@@ -1,5 +1,5 @@
 use rusqlite::{named_params, params, Connection, Result};
-use std::collections::HashMap;
+use std::collections::{HashSet, HashMap};
 use std::time;
 
 pub struct DbInstance {
@@ -73,9 +73,7 @@ impl DbInstance {
             1 => {
                 let mut stmt = self
                     .conn
-                    .prepare(
-                        r#"UPDATE chip SET chip_type=? WHERE id=?;"#,
-                    )
+                    .prepare(r#"UPDATE chip SET chip_type=? WHERE id=?;"#)
                     .unwrap();
                 stmt.execute(params![chip_type, max_id]).unwrap();
                 max_id
@@ -151,16 +149,37 @@ impl DbInstance {
         // Get chips
         let mut stmt = self
             .conn
-            .prepare("SELECT flash.id, chip_number, chip_type, flash.software, flash.flashed_id, flash.flashed_time FROM chip JOIN flash ON flash.chip_fk=chip.id GROUP BY chip_number;")
+            .prepare("SELECT chip.id, chip_number, chip_type, flash.software, flash.flashed_id, flash.flashed_time FROM chip JOIN flash ON flash.chip_fk=chip.id ORDER BY chip.chip_number, flash.id;")
             .unwrap();
         let mut chips = stmt.query(params![]).unwrap();
 
         let mut device_result = vec![];
+        let mut viewed: HashSet<i32> = HashSet::new();
         while let Some(row) = chips.next().unwrap() {
             let mut dev_hm: HashMap<String, String> = HashMap::new();
+            // Get the max flashed pk (the most recent flash for the given chip)
+            let mut stmt = self
+                .conn
+                .prepare("SELECT MAX(flash.id) FROM flash WHERE chip_fk=?;")
+                .unwrap();
+            let chip_fk: i32 = row.get(0).unwrap();
 
-            let flash_pk: i64 = row.get(0).unwrap();
+            if viewed.contains(&chip_fk) {
+                continue;
+            } else {
+                viewed.insert(chip_fk);
+            }
+
+            let mut max_id_rows = stmt.query(params![chip_fk]).unwrap();
+            let mut flash_pk = -1;
+
+            while let Some(row_flash_pk) = max_id_rows.next().unwrap() {
+                flash_pk = row_flash_pk.get(0).unwrap();
+            }
+
+
             let chip_number: String = row.get(1).unwrap();
+
             let chip_type: String = row.get(2).unwrap();
             let software: String = row.get(3).unwrap();
             let flashed_id: Option<String> = row.get(4).unwrap();
@@ -174,13 +193,14 @@ impl DbInstance {
             );
             dev_hm.insert("flashed_time".to_string(), flashed_time.to_string());
 
-            // println!("{}", id);
             test_keys.iter().for_each(|key| {
                 let mut stmt = self
                     .conn
                     .prepare(r#"SELECT value FROM test WHERE flash_fk=:flash_fk AND key=:key;"#)
                     .unwrap();
-                let mut test_results = stmt.query_named(named_params! { ":flash_fk": flash_pk, ":key": key }).unwrap();
+                let mut test_results = stmt
+                    .query_named(named_params! { ":flash_fk": flash_pk, ":key": key })
+                    .unwrap();
                 while let Some(res) = test_results.next().unwrap() {
                     let val = res.get(0).unwrap();
                     dev_hm.insert(key.clone(), val);
