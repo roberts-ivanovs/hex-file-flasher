@@ -50,6 +50,7 @@ pub fn save_report(headers: &Vec<String>, values: &Vec<HashMap<String, String>>)
     }
 
     let rssi_col = headers_final.clone().iter().position(|r| r == "rssi");
+    let db_vs_best_col = (headers_final_w_calc.clone().iter().position(|r| r == "db_vs_best").unwrap() + 65) as u8 as char;
 
     wb.write_sheet(&mut sheet, |sw| {
         let mut header_row = row![];
@@ -72,15 +73,23 @@ pub fn save_report(headers: &Vec<String>, values: &Vec<HashMap<String, String>>)
                 }
             }
 
+            let current_row = idx + row_offset + 1;
+            let mut pass_string = vec![
+                format!(r#"=IF(AND(C{}<>"","#, current_row), r#"), "PASS", "NO PASS")"#.to_owned()];
             match rssi_col {
                 Some(col) => {
+                    let rssi_col_i = (col + 65) as u8 as char ;
+                    let rssi_cell_addr = format!("{}{}",rssi_col_i, current_row);
                     data_row.add_cell(format!(
-                        r#"=ROUNDDOWN({rssi_col}{current_row}-{top_5_db_avg}, -1)"#,
-                        rssi_col = (col + 65) as u8 as char ,
-                        current_row = idx + row_offset + 1,
+                        r#"=ROUNDDOWN({rssi_cell_addr}-{top_5_db_avg}, -1)"#,
+                        rssi_cell_addr = rssi_cell_addr,
                         top_5_db_avg = format!("$B${}", values.len() + 5)
                     ));
 
+                    let rounddown_location = format!("{}{}", db_vs_best_col, current_row);
+                    pass_string.insert(1, format!("{}>=-10", rounddown_location));
+                    let pass_expr = pass_string.join(",");
+                    data_row.add_cell(pass_expr);
                 }
                 None => {}
             }
