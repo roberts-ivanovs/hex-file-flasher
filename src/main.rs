@@ -24,22 +24,22 @@ fn main() {
 
     // ------------------Validation-------------------- //
     if matches.is_present("port-to-simulate") && soft_type == SoftTypes::Master {
-        print_error_and_exit("No reason to simulate port when flashing Master software!");
+        utils::print_error_and_exit("No reason to simulate port when flashing Master software!");
         process::exit(1);
     }
 
     if !matches.is_present("id-to-ping") && soft_type == SoftTypes::Master {
-        print_error_and_exit("Master needs an ID to ping!");
+        utils::print_error_and_exit("Master needs an ID to ping!");
         process::exit(1);
     }
 
     if matches.is_present("id-to-flash") && soft_type == SoftTypes::Master {
-        print_error_and_exit("There's no reason for a master soft to contain an ID");
+        utils::print_error_and_exit("There's no reason for a master soft to contain an ID");
         process::exit(1);
     }
 
     if chip_type == ChipTypes::Green && !matches.is_present("chip-factory-number") {
-        print_error_and_exit(
+        utils::print_error_and_exit(
             "When flashing green chips be sure to pass the chips factory number.
         It usually can be found on the bottom of the chip with a QR code attached",
         );
@@ -74,11 +74,6 @@ fn main() {
     }
     // ------------------Save to csv file-------------------- //
     // TODO Call external Python code
-}
-
-fn print_error_and_exit(error: &str) {
-    eprintln!("{}", error);
-    process::exit(1);
 }
 
 fn get_chip_type(matches: &ArgMatches) -> Result<ChipTypes, String> {
