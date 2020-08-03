@@ -1,11 +1,15 @@
 mod db;
+mod hex;
 mod tester;
+mod utils;
 
 #[macro_use]
 extern crate clap;
 
+use crate::hex::flash;
 use clap::{App, ArgMatches};
 
+use promptly::{prompt, prompt_default};
 use std::process;
 use std::time;
 use tester::chip::{ChipTypes, SoftTypes};
@@ -52,7 +56,19 @@ fn main() {
             "Flashing {} as {:?} chip with {:?} code with ID {:?} ",
             port_to_flash, chip_type, soft_type, id_to_flash
         );
-        flashed = true;
+
+        loop {
+            flashed = flash(&chip_type, &soft_type, &port_to_flash, id_to_flash);
+            if flashed {
+                println!("Flashing went OK!");
+            } else {
+                println!("Something went wrong while flashing!");
+            }
+            let reflash = prompt_default("Flash again?", true).unwrap();
+            if !reflash {
+                break;
+            }
+        }
     }
 
     // ------------------Perform testing-------------------- //
