@@ -68,7 +68,11 @@ impl Chip {
         chip
     }
 
-    pub fn perform_test(&mut self, id_to_ping: Option<&str>, flashed: bool) -> HashMap<String, String> {
+    pub fn perform_test(
+        &mut self,
+        id_to_ping: Option<&str>,
+        flashed: bool,
+    ) -> HashMap<String, String> {
         let mut hm = HashMap::new();
         hm.insert("flashed".to_string(), flashed.to_string());
         if flashed {
@@ -77,7 +81,12 @@ impl Chip {
                     // Check RSSI
                     let id_to_ping = id_to_ping.unwrap().parse::<i32>().unwrap();
                     let rssi = self.check_rssi(4, id_to_ping);
-                    hm.insert("rssi".to_string(), rssi.to_string());
+                    let rssi = match rssi {
+                        Some(v) => v.to_string(),
+                        None => r#"n\a"#.to_owned(),
+                    };
+
+                    hm.insert("rssi".to_string(), rssi);
                 }
                 SoftTypes::Relay1 | SoftTypes::Relay1_5 => {
                     // TODO Perform simulations here with the attached master
@@ -99,7 +108,7 @@ impl Chip {
         }
     }
 
-    fn check_rssi(&mut self, times: i32, id_to_ping: i32) -> i32 {
+    fn check_rssi(&mut self, times: i32, id_to_ping: i32) -> Option<i32> {
         // Perform 'clean buffer'
         self.serial.flush().unwrap();
 
@@ -123,11 +132,16 @@ impl Chip {
                 }
                 None => {
                     println!("Nothing responded! {}", self.leftover_buffer);
+                    break;
                 }
             }
         }
-        let rssi = total_rssi / total_successful_rssi_pings;
-        rssi
+        if total_successful_rssi_pings == 0 {
+            None
+        } else {
+            let rssi = total_rssi / total_successful_rssi_pings;
+            Some(rssi)
+        }
     }
 
     fn ping(&mut self, id_to_ping: i32) {
@@ -162,33 +176,35 @@ impl Chip {
     }
 
     fn readline(&mut self) -> String {
-        let line = self.get_line_from_current_buffer();
+        for _ in 0..3 {
+            let line = self.get_line_from_current_buffer();
 
-        match line {
-            Some(val) => return val,
-            None => {
-                // Perform buffer reading
-                let mut res = [0; 10000];
-                let elems = self.serial.read(&mut res);
-                match elems {
-                    Ok(val) => {
-                        if val == 0 {
-                            return "".to_string();
-                        } else {
-                            let response = &res[0..val];
-                            let lines = std::str::from_utf8(&response).unwrap();
-                            self.leftover_buffer += lines;
+            match line {
+                Some(val) => return val,
+                None => {
+                    // Perform buffer reading
+                    let mut res = [0; 10000];
+                    let elems = self.serial.read(&mut res);
+                    match elems {
+                        Ok(val) => {
+                            if val == 0 {
+                                return "".to_string();
+                            } else {
+                                let response = &res[0..val];
+                                let lines = std::str::from_utf8(&response).unwrap();
+                                self.leftover_buffer += lines;
+                            }
                         }
-                    }
-                    Err(_) => {
-                        // sleep for a bit
-                        let t = time::Duration::from_millis(300);
-                        thread::sleep(t);
+                        Err(_) => {
+                            // sleep for a bit
+                            let t = time::Duration::from_millis(300);
+                            thread::sleep(t);
+                        }
                     }
                 }
             }
         }
-        self.readline()
+        "".to_owned()
     }
 
     fn get_line_from_current_buffer(&mut self) -> Option<String> {
