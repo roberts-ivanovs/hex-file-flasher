@@ -73,12 +73,7 @@ fn main() {
         db_instance.register_test(flash_id, key, val);
     }
     // ------------------Save to csv file-------------------- //
-    // Get all the data from the DB
-
-    let (device_values, headers) = db_instance.read_data();
-
-    // Save to a report file
-    tester::output::save_report(&headers, &device_values);
+    // TODO Call external Python code
 }
 
 fn print_error_and_exit(error: &str) {
