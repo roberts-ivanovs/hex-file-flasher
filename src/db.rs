@@ -1,5 +1,4 @@
 use rusqlite::{named_params, params, Connection, Result};
-use std::collections::{HashSet, HashMap};
 use std::time;
 
 pub struct DbInstance {
@@ -133,81 +132,4 @@ impl DbInstance {
         id
     }
 
-    pub fn read_data(&self) -> (Vec<HashMap<String, String>>, Vec<String>) {
-        // Get test headers
-        let mut test_keys = vec![];
-        let mut stmt = self
-            .conn
-            .prepare("SELECT key FROM test GROUP BY key;")
-            .unwrap();
-        let mut headers = stmt.query(params![]).unwrap();
-        while let Some(row) = headers.next().unwrap() {
-            let key: String = row.get(0).unwrap();
-            test_keys.push(key);
-        }
-
-        // Get chips
-        let mut stmt = self
-            .conn
-            .prepare("SELECT chip.id, chip_number, chip_type, flash.software, flash.flashed_id, flash.flashed_time FROM chip JOIN flash ON flash.chip_fk=chip.id ORDER BY chip.chip_number, flash.id;")
-            .unwrap();
-        let mut chips = stmt.query(params![]).unwrap();
-
-        let mut device_result = vec![];
-        let mut viewed: HashSet<i32> = HashSet::new();
-        while let Some(row) = chips.next().unwrap() {
-            let mut dev_hm: HashMap<String, String> = HashMap::new();
-            // Get the max flashed pk (the most recent flash for the given chip)
-            let mut stmt = self
-                .conn
-                .prepare("SELECT MAX(flash.id) FROM flash WHERE chip_fk=?;")
-                .unwrap();
-            let chip_fk: i32 = row.get(0).unwrap();
-
-            if viewed.contains(&chip_fk) {
-                continue;
-            } else {
-                viewed.insert(chip_fk);
-            }
-
-            let mut max_id_rows = stmt.query(params![chip_fk]).unwrap();
-            let mut flash_pk = -1;
-
-            while let Some(row_flash_pk) = max_id_rows.next().unwrap() {
-                flash_pk = row_flash_pk.get(0).unwrap();
-            }
-
-
-            let chip_number: String = row.get(1).unwrap();
-
-            let chip_type: String = row.get(2).unwrap();
-            let software: String = row.get(3).unwrap();
-            let flashed_id: Option<String> = row.get(4).unwrap();
-            let flashed_time: f64 = row.get(5).unwrap();
-            dev_hm.insert("chip_number".to_string(), chip_number);
-            dev_hm.insert("chip_type".to_string(), chip_type);
-            dev_hm.insert("software".to_string(), software);
-            dev_hm.insert(
-                "flashed_id".to_string(),
-                flashed_id.unwrap_or_else(|| "".to_string()),
-            );
-            dev_hm.insert("flashed_time".to_string(), flashed_time.to_string());
-
-            test_keys.iter().for_each(|key| {
-                let mut stmt = self
-                    .conn
-                    .prepare(r#"SELECT value FROM test WHERE flash_fk=:flash_fk AND key=:key;"#)
-                    .unwrap();
-                let mut test_results = stmt
-                    .query_named(named_params! { ":flash_fk": flash_pk, ":key": key })
-                    .unwrap();
-                while let Some(res) = test_results.next().unwrap() {
-                    let val = res.get(0).unwrap();
-                    dev_hm.insert(key.clone(), val);
-                }
-            });
-            device_result.push(dev_hm);
-        }
-        (device_result, test_keys)
-    }
 }
