@@ -32,6 +32,11 @@ fn main() {
         process::exit(1);
     }
 
+    if !matches.is_present("port-to-simulate") && soft_type == SoftTypes::Relay1 || soft_type == SoftTypes::Relay1_5 {
+        utils::print_error_and_exit("Relay chips need a common port with a master attached to it for proper testing!");
+        process::exit(1);
+    }
+
     if !matches.is_present("id-to-ping") && soft_type == SoftTypes::Master {
         utils::print_error_and_exit("Master needs an ID to ping!");
         process::exit(1);
@@ -51,7 +56,7 @@ fn main() {
 
     // ------------------Perform flashing-------------------- //
     let mut flashed = false;
-    if matches.is_present("port-to-flash") && !matches.is_present("only-test") {
+    if matches.is_present("port-to-flash") {
         println!(
             "Flashing {} as {:?} chip with {:?} code with ID {:?} ",
             port_to_flash, chip_type, soft_type, id_to_flash

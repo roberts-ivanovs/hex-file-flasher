@@ -15,12 +15,6 @@ args:
         value_name: Port
         help: Simulate data-feed into them for master comms. e.g /dev/ttyUSB0
         required: false
-    - only-test:
-        short: t
-        long: Perform only tests, don't flash
-        help: Perform rigorous tests on the flashed chip without flashing
-        required: false
-        takes_value: false
     - id-to-ping:
         short: p
         long: id-ping
