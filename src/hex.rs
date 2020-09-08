@@ -53,7 +53,7 @@ pub fn flash(
                 "-U",
                 &format!("eeprom:w:hex/eeproms/eeprom_{}.hex", id_to_flash.unwrap()),
                 "-P",
-                port_to_flash,
+                factual_avrdude_port,
             ],
             PopenConfig::default(),
         ),
