@@ -3,6 +3,7 @@ use crate::{
     utils::print_error_and_exit,
 };
 use subprocess::{Popen, PopenConfig};
+use regex::Regex;
 
 pub fn flash(
     chip: &ChipTypes,
@@ -22,8 +23,8 @@ pub fn flash(
         SoftTypes::Relay1_5 => format!("relay_mk1_5.{}.hex", get_avr_device(&chip)),
     };
     let code_directory = format!("hex/{}/{}", code_directory_path, code_directory_hex);
-    let programmer_type = get_programmer_device(chip);
-    let factual_avrdude_port = "usb0";
+    let programmer_type = get_programmer_device(&chip);
+    let factual_avrdude_port = get_proper_port(&chip, &port_to_flash);
     let prcs = match soft {
         SoftTypes::Master => Popen::create(
             &[
@@ -31,7 +32,7 @@ pub fn flash(
                 "-p",
                 get_avr_device(&chip),
                 "-P",
-                factual_avrdude_port,
+                factual_avrdude_port.as_ref(),
                 "-c",
                 programmer_type,
                 "-b",
@@ -53,7 +54,7 @@ pub fn flash(
                 "-U",
                 &format!("eeprom:w:hex/eeproms/eeprom_{}.hex", id_to_flash.unwrap()),
                 "-P",
-                factual_avrdude_port,
+                factual_avrdude_port.as_ref(),
             ],
             PopenConfig::default(),
         ),
@@ -81,4 +82,20 @@ fn get_programmer_device(chip: &ChipTypes) -> &str {
         ChipTypes::BlueShiny => "arduino",
         ChipTypes::BlueNonShiny => "arduino",
     }
+}
+fn get_proper_port(chip: &ChipTypes, initial_port: &str) -> String {
+    match chip {
+        ChipTypes::Green => extract_for_atmelice(initial_port).unwrap(),
+        // the arduino programmer is fine with "/dev/ttyUSB0" port specifier
+        ChipTypes::BlueShiny => initial_port.to_owned(),
+        ChipTypes::BlueNonShiny => initial_port.to_owned(),
+    }
+}
+
+fn extract_for_atmelice(initial_port: &str) -> Option<String> {
+    let re = Regex::new(r"d+").unwrap();
+    for cap in re.captures_iter(&initial_port) {
+        return Some(format!("usb{}", &cap[0]));
+    }
+    None
 }
