@@ -9,7 +9,7 @@ extern crate clap;
 use crate::hex::flash;
 use clap::{App, ArgMatches};
 
-use promptly::{prompt, prompt_default};
+use promptly::{prompt_default};
 use std::process;
 use std::time;
 use tester::chip::{ChipTypes, SoftTypes};
@@ -25,6 +25,7 @@ fn main() {
     let id_to_flash = matches.value_of("id-to-flash");
     let factory_number = matches.value_of("chip-factory-number");
     let id_to_ping = matches.value_of("id-to-ping");
+    let port_to_simulate = matches.value_of("port-to-simulate");
 
     // ------------------Validation-------------------- //
     if matches.is_present("port-to-simulate") && soft_type == SoftTypes::Master {
@@ -79,7 +80,7 @@ fn main() {
     // ------------------Perform testing-------------------- //
     let mut device_to_test =
         tester::chip::Chip::new(port_to_flash, id_to_flash, chip_type, soft_type);
-    let test_results = device_to_test.perform_test(id_to_ping, flashed);
+    let test_results = device_to_test.perform_test(id_to_ping, flashed, port_to_simulate);
 
     // ------------------Save to database-------------------- //
     let db_instance = db::DbInstance::new();

@@ -72,6 +72,7 @@ impl Chip {
         &mut self,
         id_to_ping: Option<&str>,
         flashed: bool,
+        port_to_simulate: Option<&str>,
     ) -> HashMap<String, String> {
         let mut hm = HashMap::new();
         hm.insert("flashed".to_string(), flashed.to_string());
@@ -89,7 +90,20 @@ impl Chip {
                     hm.insert("rssi".to_string(), rssi);
                 }
                 SoftTypes::Relay1 | SoftTypes::Relay1_5 => {
-                    // TODO Perform simulations here with the attached master
+                    // Create a chip instance to the master
+                    // NOTE: the chip type means nothing if you are not
+                    // flashing the module
+                    let mut attached_master = Chip::new(port_to_simulate.unwrap(), None, ChipTypes::Green, SoftTypes::Master);
+                    let id_to_ping = id_to_ping.unwrap().parse::<i32>().unwrap();
+                    // ping the newly flashed relay with the master instance
+                    let rssi = attached_master.check_rssi(4, id_to_ping);
+                    // set the rssi value
+                    let rssi = match rssi {
+                        Some(v) => v.to_string(),
+                        None => r#"n\a"#.to_owned(),
+                    };
+
+                    hm.insert("rssi".to_string(), rssi);
                 }
             }
         }
