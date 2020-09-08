@@ -94,7 +94,7 @@ impl Chip {
                     // NOTE: the chip type means nothing if you are not
                     // flashing the module
                     let mut attached_master = Chip::new(port_to_simulate.unwrap(), None, ChipTypes::Green, SoftTypes::Master);
-                    let id_to_ping = id_to_ping.unwrap().parse::<i32>().unwrap();
+                    let id_to_ping = self.id.unwrap();
                     // ping the newly flashed relay with the master instance
                     let rssi = attached_master.check_rssi(4, id_to_ping);
                     // set the rssi value
