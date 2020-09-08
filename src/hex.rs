@@ -22,7 +22,8 @@ pub fn flash(
         SoftTypes::Relay1_5 => format!("relay_mk1_5.{}.hex", get_avr_device(&chip)),
     };
     let code_directory = format!("hex/{}/{}", code_directory_path, code_directory_hex);
-
+    let programmer_type = get_programmer_device(chip);
+    let factual_avrdude_port = "usb0";
     let prcs = match soft {
         SoftTypes::Master => Popen::create(
             &[
@@ -30,9 +31,9 @@ pub fn flash(
                 "-p",
                 get_avr_device(&chip),
                 "-P",
-                port_to_flash,
+                factual_avrdude_port,
                 "-c",
-                "arduino",
+                programmer_type,
                 "-b",
                 "57600",
                 "-U",
@@ -46,13 +47,13 @@ pub fn flash(
                 "-p",
                 get_avr_device(&chip),
                 "-c",
-                "atmelice_pdi",
+                programmer_type,
                 "-U",
                 &format!("flash:w:{}", code_directory),
                 "-U",
                 &format!("eeprom:w:hex/eeproms/eeprom_{}.hex", id_to_flash.unwrap()),
                 "-P",
-                "{port_to_flash}",
+                port_to_flash,
             ],
             PopenConfig::default(),
         ),
@@ -71,5 +72,13 @@ fn get_avr_device(chip: &ChipTypes) -> &str {
         ChipTypes::Green => "x16e5",
         ChipTypes::BlueShiny => "m328p",
         ChipTypes::BlueNonShiny => "m328p",
+    }
+}
+
+fn get_programmer_device(chip: &ChipTypes) -> &str {
+    match chip {
+        ChipTypes::Green => "atmelice_pdi",
+        ChipTypes::BlueShiny => "arduino",
+        ChipTypes::BlueNonShiny => "arduino",
     }
 }
