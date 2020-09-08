@@ -32,7 +32,7 @@ fn main() {
         process::exit(1);
     }
 
-    if !matches.is_present("port-to-simulate") && soft_type == SoftTypes::Relay1 || soft_type == SoftTypes::Relay1_5 {
+    if !matches.is_present("port-to-simulate") && (soft_type == SoftTypes::Relay1 || soft_type == SoftTypes::Relay1_5) {
         utils::print_error_and_exit("Relay chips need a common port with a master attached to it for proper testing!");
         process::exit(1);
     }
